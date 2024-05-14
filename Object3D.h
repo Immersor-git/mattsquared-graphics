@@ -3,6 +3,7 @@
 #include <vector>
 #include "Mesh3D.h"
 #include "ShaderProgram.h"
+
 /**
  * @brief Represents an object placed in a 3D scene. The object is a node in an hierarchy of
  * objects representing a single 3D model. Each object in the hierarchy has its own position,
@@ -37,12 +38,15 @@ public:
 	Object3D(std::vector<Mesh3D>&& meshes);
 	Object3D(std::vector<Mesh3D>&& meshes, const glm::mat4& baseTransform);
 
+    std::vector<std::shared_ptr<BoneInfo>> m_boneInfos;
+
 	// Simple accessors.
 	const glm::vec3& getPosition() const;
 	const glm::vec3& getOrientation() const;
 	const glm::vec3& getScale() const;
 	const glm::vec3& getCenter() const;
 	const std::string& getName() const;
+    const std::vector<Mesh3D>& getMeshes() const;
 
 	// Child management.
 	size_t numberOfChildren() const;

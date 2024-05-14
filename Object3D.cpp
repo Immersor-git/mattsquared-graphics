@@ -1,5 +1,5 @@
-#include <glm/ext.hpp>
 #include "Object3D.h"
+#include "MatrixUtils.h"
 #include <iostream>
 
 void Object3D::rebuildModelMatrix() {
@@ -16,6 +16,13 @@ void Object3D::rebuildModelMatrix() {
 
 Object3D::Object3D(std::vector<Mesh3D>&& meshes)
 	: Object3D(std::move(meshes), glm::mat4(1)) {
+    // Add the BoneInfo pointers to a list in the Object3D
+    for (auto& mesh : m_meshes) {
+        for (auto& boneInfo : mesh.boneInfos) {
+            m_boneInfos.push_back(boneInfo); // Add the BoneInfo pointer to the Object3D
+        }
+    }
+
 	rebuildModelMatrix();
 }
 
@@ -47,6 +54,10 @@ const glm::vec3& Object3D::getCenter() const {
 
 const std::string& Object3D::getName() const {
 	return m_name;
+}
+
+const std::vector<Mesh3D>& Object3D::getMeshes() const {
+    return m_meshes;
 }
 
 size_t Object3D::numberOfChildren() const {
@@ -100,13 +111,41 @@ void Object3D::rotate(const glm::vec3& rotation) {
 }
 
 void Object3D::grow(const glm::vec3& growth) {
-	m_scale = m_scale * growth;
-	rebuildModelMatrix();
+    m_scale = m_scale * growth;
+
+    std::cout << "Bone matrices before scaling: " << std::endl;
+    for (auto& boneInfo : m_boneInfos) {
+        std::cout << boneInfo->name << std::endl;
+        printMat4(boneInfo->boneOffset);
+        std::cout << std::endl;
+    }
+
+    glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), growth);
+    for (auto& boneInfo : m_boneInfos) {
+        glm::mat4 newBoneOffset = scaleMatrix * boneInfo->boneOffset;
+
+        boneInfo->boneOffset = newBoneOffset;
+        boneInfo->finalTransformation = newBoneOffset;
+    }
+
+    std::cout << "Bone matrices after scaling: " << std::endl;
+    for (auto& boneInfo : m_boneInfos) {
+        std::cout << boneInfo->name << std::endl;
+        printMat4(boneInfo->boneOffset);
+        std::cout << std::endl;
+    }
+
+    rebuildModelMatrix();
 }
 
 void Object3D::addChild(Object3D&& child)
 {
 	m_children.emplace_back(child);
+
+    // Add the BoneInfo pointers from the child to the parent.
+    for (auto& boneInfo : m_children.back().m_boneInfos) {
+        m_boneInfos.push_back(boneInfo);
+    }
 }
 
 void Object3D::render(sf::Window& window, ShaderProgram& shaderProgram) const {
@@ -129,4 +168,12 @@ void Object3D::renderRecursive(sf::Window& window, ShaderProgram& shaderProgram,
 	for (auto& child : m_children) {
 		child.renderRecursive(window, shaderProgram, trueModel);
 	}
+
+    // Print truemodel matrix
+//    std::cout << "True model matrix: " << std::endl;
+//    std::cout << trueModel[0][0] << ", " << trueModel[0][1] << ", " << trueModel[0][2] << ", " << trueModel[0][3] << std::endl;
+//    std::cout << trueModel[1][0] << ", " << trueModel[1][1] << ", " << trueModel[1][2] << ", " << trueModel[1][3] << std::endl;
+//    std::cout << trueModel[2][0] << ", " << trueModel[2][1] << ", " << trueModel[2][2] << ", " << trueModel[2][3] << std::endl;
+//    std::cout << trueModel[3][0] << ", " << trueModel[3][1] << ", " << trueModel[3][2] << ", " << trueModel[3][3] << std::endl;
+//    std::cout << std::endl;
 }

@@ -1,7 +1,3 @@
-/**
-This application renders a textured mesh that was loaded with Assimp.
-*/
-
 #include <glad/glad.h>
 #include <iostream>
 
@@ -62,6 +58,11 @@ int main() {
 
 	auto last = c.getElapsedTime();
 	while (running) {
+        // Resetting the global bone index for the next frame
+        Mesh3D::globalBoneIndex = 0;
+        Mesh3D::shaderBones.clear();
+
+        // Process events.
 		sf::Event ev;
 		while (window.pollEvent(ev)) {
 			if (ev.type == sf::Event::Closed) {
@@ -78,6 +79,7 @@ int main() {
 		for (auto& animator : scene.animators) {
 			//animator.tick(diffSeconds);
 		}
+
         //Jeep code
         jeep.Update(diffSeconds);
         cameraPosition = jeep.rearCamera;
@@ -85,13 +87,13 @@ int main() {
         mainShader.setUniform("view", camera);
         //scene.objects[0].move(glm::vec3(input.sideInput,0,input.forwardInput)*diffSeconds*1.0f);
         //Some test code to move a spotlight around
-        glm::vec3 lightPos = glm::vec3(sin(counter)*4,0+sin(counter*0.1234)*0.3,cos(counter)*4);
+        //glm::vec3 lightPos = glm::vec3(sin(counter)*4,0+sin(counter*0.1234)*0.3,cos(counter)*4);
         //scene.lights[2].setPosition(jeep.headlightPos); //Moves the spotlight around
         //scene.lights[2].setDirection(normalize(jeep.direction - glm::vec3(0,0.3,0)));
         //scene.lights[2].updateUniforms(mainShader); //Call this whenever you change the light's properties
-        scene.objects[1].setPosition(lightPos); //Moves the tiger model to the light position
+        //scene.objects[1].setPosition(lightPos); //Moves the tiger model to the light position
         counter += diff.asSeconds();
-        jeep.l_brakeLight.printLightSpaceMatrix();
+        //jeep.l_brakeLight.printLightSpaceMatrix();
         jeep.headlights.updateUniforms(mainShader);
         jeep.l_brakeLight.updateUniforms(mainShader);
         jeep.r_brakeLight.updateUniforms(mainShader);

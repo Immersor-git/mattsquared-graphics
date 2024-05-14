@@ -1,9 +1,21 @@
 #pragma once
+#include <map>
 #include <SFML/Window.hpp>
 #include <glm/glm.hpp>
 #include <glad/glad.h>
 #include "ShaderProgram.h"
 #include "Texture.h"
+
+struct BoneInfo {
+    glm::mat4 boneOffset;
+    glm::mat4 finalTransformation;
+    std::string name;
+};
+
+struct BoneData {
+    unsigned int IDs[4];
+    float weights[4];
+};
 
 struct Vertex3D {
 	float_t x;
@@ -16,6 +28,10 @@ struct Vertex3D {
 
 	float_t u;
 	float_t v;
+
+    BoneData boneData;
+
+    void addBoneData(unsigned int boneID, float weight);
 
 	Vertex3D(float_t px, float_t py, float_t pz, float_t normX, float_t normY, float_t normZ,
 		float_t texU, float_t texV) :
@@ -34,6 +50,14 @@ private:
 	size_t m_faceCount;
 
 public:
+    std::vector<std::shared_ptr<BoneInfo>> boneInfos;
+    std::map<std::string, unsigned int> boneMapping;
+    unsigned int numBones = 0;
+
+    // The global bone indices for all meshes in the scene
+    static unsigned int globalBoneIndex;
+    static std::vector<std::string> shaderBones;
+
 	Mesh3D() = delete;
 
 	
@@ -49,7 +73,7 @@ public:
 	void addTexture(Texture texture);
 
 	/**
-	 * @brief Constructs a 1x1 square centered at the origin in world space.
+	 * @brief Constructs  1x1 square centered at the origin in world space.
 	*/
 	static Mesh3D square(const std::vector<Texture>& textures);
 	/**
@@ -65,5 +89,4 @@ public:
 	 * @brief Renders the mesh to the given context.
 	 */
 	void render(sf::Window& window, ShaderProgram& program) const;
-	
 };

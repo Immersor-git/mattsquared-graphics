@@ -38,7 +38,7 @@ public:
 	Animator() :
 		m_currentTime(0),
 		m_nextTransition(0),
-		m_currentIndex(-1), 
+		m_currentIndex(-1),
 		m_currentAnimation(nullptr) {
 	}
 

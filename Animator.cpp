@@ -1,4 +1,5 @@
-	#include "Animator.h"
+#include "Animator.h"
+#include <iostream>
 
 void Animator::nextAnimation() {
 	// Increase the animation index, and start the next animation if there is one.
@@ -35,6 +36,11 @@ void Animator::tick(float_t dt) {
 		else {
 			m_currentAnimation->tick(dt);
 		}
+
+        // print current time and next transition and dt
+//        std::cout << "Current time: " << m_currentTime << std::endl;
+//        std::cout << "Next transition: " << m_nextTransition << std::endl;
+//        std::cout << "dt: " << dt << std::endl;
 	}
 }
 

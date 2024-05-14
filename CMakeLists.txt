@@ -14,11 +14,12 @@ add_executable(mattsquared_graphics
         Animator.cpp
         Scene.cpp
         DynamicLight.cpp
-        DynamicLight.h
         UserInput.cpp
-        UserInput.h
         Vehicle.cpp
-        Vehicle.h
+        BoneRotationAnimation.h
+        MatrixUtils.cpp
+        MyBone.cpp
+        MyBone.h
 )
 
 find_package(SFML COMPONENTS system window REQUIRED)

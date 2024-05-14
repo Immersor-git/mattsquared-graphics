@@ -2,8 +2,36 @@
 #include "AssimpImport.h"
 #include "ShaderProgram.h"
 #include "Texture.h"
+#include "BoneRotationAnimation.h"
+#include "MyBone.h"
 
+void animateObjectAndChildren(Object3D& object, ShaderProgram& shader, const std::vector<std::string>& boneNames, std::vector<Animator>& animators) {
+    for (auto& mesh : object.getMeshes()) {
+for (const auto& boneName : boneNames) {
+    auto it = std::find_if(mesh.boneInfos.begin(), mesh.boneInfos.end(), [&boneName](const std::shared_ptr<BoneInfo>& bone) {
+        return bone->name == boneName;
+    });
 
+    // If the bone is found
+    if (it != mesh.boneInfos.end()) {
+        // Create a BoneRotationAnimation for the bone
+        auto boneRotationAnimation = std::make_unique<BoneRotationAnimation>(**it, object, 3.0f, glm::vec3(0.0f, 0.0f, 30.0f), shader);
+
+        // Create an animator and add the animation to it
+        Animator animator;
+        animator.addAnimation(std::move(boneRotationAnimation));
+
+        // Add the animator to the list
+        animators.push_back(std::move(animator));
+    }
+}
+    }
+
+    // Recursively animate children
+    for (size_t i = 0; i < object.numberOfChildren(); ++i) {
+        animateObjectAndChildren(object.getChild(i), shader, boneNames, animators);
+    }
+}
 
 Scene Scene::jeep() {
     auto jeep = assimpLoad("../models/mil_jeep_fbx/mil_jeep.fbx", true);
@@ -17,32 +45,28 @@ Scene Scene::jeep() {
     map.move(glm::vec3(0,-1.2,0));
     map.rotate(glm::vec3(glm::radians(-90.0f),0,0));
 
-    Object3D map2 = Object3D({Mesh3D::square(groundtex)});//assimpLoad("../models/racetrack/arena.obj", true);
-    map2.grow(glm::vec3(100,100,10));
-    map2.move(glm::vec3(20,-1.2,0));
-    //map.rotate(glm::vec3(glm::radians(-90.0f),0,0));
     auto lightSource = assimpLoad("../models/tiger/scene.gltf", true);
     lightSource.setPosition(glm::vec3(-2,1,0));
     lightSource.grow(glm::vec3(0.01,0.01,0.01));
 
     glm::mat4 dirLight = glm::mat4(
-            0.5,-0.5 ,0,0, //Position (Direction for directional lights);
-            0.2,0.2,0.2,0, //Color
+            0.5,-0.1 ,0,0, //Position (Direction for directional lights);
+            1,1,1,0, //Color
             1,1,10,0, //LightType, Range, Cuttoff Angle (For spotlights)
             0,0,0,0 //LookAt (For spotlights)
     );
 
-    /*glm::mat4 pointLight = glm::mat4(
+    glm::mat4 pointLight = glm::mat4(
             -5,0,0,0, //Position
             1,0,0,0, //Color
             2,25,0,0, //LightType, Range, Cuttoff Angle (For spotlights)
             0,0,0,0 //LookAt (For spotlights)
     );
 
-    /glm::mat4 spotLight = glm::mat4(
+    glm::mat4 spotLight = glm::mat4(
             1,0,5,0, //Position
             1,1,0.5,0, //Color
-            3,70,45,0, //LightType, Range, Cuttoff Angle (For spotlights)
+            3,70,50,0, //LightType, Range, Cuttoff Angle (For spotlights)
             0,0,1,0 //LookAt (For spotlights)
     );
 
@@ -51,26 +75,25 @@ Scene Scene::jeep() {
             0,1,0,0, //Color
             2,25,0,0, //LightType, Range, Cuttoff Angle (For spotlights)
             0,0,0,0 //LookAt (For spotlights)
-    )
-     */
+    );
+
+    ShaderProgram shader = ShaderProgram::phongLighting();
+
+    std::vector<Animator> animators;
+    //animateObjectAndChildren(jeep, shader, MyBone::tireBoneNames, animators);
 
     std::vector<Object3D> objects;
     objects.push_back(std::move(jeep));
     objects.push_back(std::move(lightSource));
     objects.push_back(std::move(map));
-    objects.push_back(std::move(map2));
     std::vector<DynamicLight> lights;
     lights.push_back(std::move(DynamicLight(dirLight)));
-    //lights.push_back(std::move(DynamicLight(pointLight)));
-    //lights.push_back(std::move(DynamicLight(spotLight)));
-    //lights.push_back(std::move(DynamicLight(pointLight2)));
-    //Animator animJeep;
-    //animJeep.addAnimation(std::make_unique<RotationAnimation>(objects[0], 10, glm::vec3(0, 5.5, 0)));
-    std::vector<Animator> animators;
-    //animators.push_back(std::move(animJeep));
+    lights.push_back(std::move(DynamicLight(pointLight)));
+    lights.push_back(std::move(DynamicLight(spotLight)));
+    lights.push_back(std::move(DynamicLight(pointLight2)));
 
     return Scene {
-            ShaderProgram::phongLighting(),
+            std::move(shader),
             std::move(objects),
             std::move(animators),
             std::move(lights)

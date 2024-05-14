@@ -1,11 +1,12 @@
 #include "AssimpImport.h"
-#include <iostream>
+#include "MyBone.h"
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <filesystem>
 #include <unordered_map>
 #include <algorithm>
+#include "MatrixUtils.h"
 
 const size_t FLOATS_PER_VERTEX = 3;
 const size_t VERTICES_PER_FACE = 3;
@@ -96,6 +97,44 @@ Mesh3D fromAssimpMesh(const aiMesh* mesh, const aiScene* scene, const std::files
 	}
 
 	auto m = Mesh3D(std::move(vertices), std::move(faces), std::move(textures));
+
+    // Load bones
+    for (unsigned int i = 0; i < mesh->mNumBones; i++) {
+        unsigned int boneIndex = 0;
+        std::string boneName(mesh->mBones[i]->mName.data);
+
+        if (m.boneMapping.find(boneName) == m.boneMapping.end()) {
+            boneIndex = m.numBones;
+            m.numBones++;
+            std::shared_ptr<BoneInfo> bi = std::make_shared<BoneInfo>();
+            bi->name = boneName;
+            m.boneInfos.push_back(bi);
+            MyBone bone = MyBone(mesh->mBones[i]);
+            m.boneInfos[boneIndex]->boneOffset = bone.m_offsetMatrix;
+            m.boneInfos[boneIndex]->finalTransformation = bone.m_offsetMatrix;
+            m.boneMapping[boneName] = boneIndex;
+
+            // print bone name and matrix
+//            std::cout << "Bone name: " << boneName << std::endl;
+//            std::cout << "Bone offset matrix: " << std::endl;
+//            printMat4(bone.m_offsetMatrix);
+//            std::cout << std::endl;
+        } else {
+            boneIndex = m.boneMapping[boneName];
+        }
+
+        for (unsigned int j = 0; j < mesh->mBones[i]->mNumWeights; j++) {
+            unsigned int vertexID = mesh->mBones[i]->mWeights[j].mVertexId;
+            float weight = mesh->mBones[i]->mWeights[j].mWeight;
+            // If current bone name is in MyBone::tireBoneNames, add it to the shaderBones vector
+            if (std::find(MyBone::tireBoneNames.begin(), MyBone::tireBoneNames.end(), boneName) != MyBone::tireBoneNames.end())
+            {
+                vertices[vertexID].addBoneData(Mesh3D::shaderBones.size(), weight);
+                Mesh3D::shaderBones.push_back(boneName);
+            }
+        }
+    }
+
 	return m;
 }
 
@@ -113,38 +152,38 @@ Object3D assimpLoad(const std::string& path, bool flipTextureCoords) {
 	else {
 
 	}
-	/*auto* mesh = scene->mMeshes[0];
-	std::vector<std::pair<std::string, sf::Image>> textures;
+    /*auto* mesh = scene->mMeshes[0];
+    std::vector<std::pair<std::string, sf::Image>> textures;
 
-	if (scene->HasMaterials()) {
+    if (scene->HasMaterials()) {
 
-		auto* material = scene->mMaterials[mesh->mMaterialIndex];
-		aiString name;
-		material->Get(AI_MATKEY_NAME, name);
+        auto* material = scene->mMaterials[mesh->mMaterialIndex];
+        aiString name;
+        material->Get(AI_MATKEY_NAME, name);
 
-		material->GetTexture(aiTextureType_DIFFUSE, 0, &name);
+        material->GetTexture(aiTextureType_DIFFUSE, 0, &name);
 
-		std::filesystem::path modelPath = path;
-		std::filesystem::path texPath = modelPath.parent_path() / name.C_Str();
-		sf::Image diffuse;
-		diffuse.loadFromFile(texPath.string());
-		textures.emplace_back(std::make_pair(std::string("diffuse"), std::move(diffuse)));
+        std::filesystem::path modelPath = path;
+        std::filesystem::path texPath = modelPath.parent_path() / name.C_Str();
+        sf::Image diffuse;
+        diffuse.loadFromFile(texPath.string());
+        textures.emplace_back(std::make_pair(std::string("diffuse"), std::move(diffuse)));
 
-		if (!material->GetTexture(aiTextureType_HEIGHT, 0, &name)) {
-			std::filesystem::path texPath = modelPath.parent_path() / name.C_Str();
-			sf::Image normal;
-			normal.loadFromFile(texPath.string());
-			textures.emplace_back(std::make_pair(std::string("normalMap"), std::move(normal)));
-		}
-		if (!material->GetTexture(aiTextureType_SPECULAR, 0, &name)) {
-			std::filesystem::path texPath = modelPath.parent_path() / name.C_Str();
-			sf::Image specular;
-			specular.loadFromFile(texPath.string());
-			textures.emplace_back(std::make_pair(std::string("specMap"), std::move(specular)));
-		}
-	}*/
-	//auto ret = Object3D(std::make_shared<Mesh3D>(fromAssimpMesh(scene->mMeshes[0], scene, textures)));
-	std::vector<Mesh3D> meshes;
+        if (!material->GetTexture(aiTextureType_HEIGHT, 0, &name)) {
+            std::filesystem::path texPath = modelPath.parent_path() / name.C_Str();
+            sf::Image normal;
+            normal.loadFromFile(texPath.string());
+            textures.emplace_back(std::make_pair(std::string("normalMap"), std::move(normal)));
+        }
+        if (!material->GetTexture(aiTextureType_SPECULAR, 0, &name)) {
+            std::filesystem::path texPath = modelPath.parent_path() / name.C_Str();
+            sf::Image specular;
+            specular.loadFromFile(texPath.string());
+            textures.emplace_back(std::make_pair(std::string("specMap"), std::move(specular)));
+        }
+    }*/
+    //auto ret = Object3D(std::make_shared<Mesh3D>(fromAssimpMesh(scene->mMeshes[0], scene, textures)));
+    std::vector<Mesh3D> meshes;
 	std::unordered_map<std::filesystem::path, Texture, PathHash> loadedTextures;
 	auto ret = processAssimpNode(scene->mRootNode, scene, std::filesystem::path(path), loadedTextures);
 
@@ -175,6 +214,13 @@ Object3D processAssimpNode(aiNode* node, const aiScene* scene,
 		}
 	}
 	auto parent = Object3D(std::move(meshes), baseTransform);
+
+    // Populate the BoneInfo pointers.
+    for (auto& mesh : meshes) {
+        for (auto& boneInfo : mesh.boneInfos) {
+            parent.m_boneInfos.push_back(boneInfo);
+        }
+    }
 
 	for (auto i = 0; i < node->mNumChildren; i++) {
 		Object3D child = processAssimpNode(node->mChildren[i], scene, modelPath, loadedTextures);
